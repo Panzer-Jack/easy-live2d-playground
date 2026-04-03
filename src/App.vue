@@ -16,6 +16,7 @@ const live2DSprite = new Live2DSprite()
 live2DSprite.init({
   modelPath: '/Resources/Hiyori/Hiyori.model3.json',
   ticker: Ticker.shared,
+  draggable: true,
 })
 
 // 监听点击事件
@@ -31,28 +32,57 @@ live2DSprite.onLive2D('hit', ({ hitAreaName, x, y }) => {
 
 onMounted(async () => {
   // 你同时又可以直接这样初始化
-  // const model2Json = await (await fetch('/Resources/Hiyori/Hiyori.model3.json')).json()
-  // const modelSetting = new CubismSetting({
-  //   prefixPath: '/Resources/Hiyori/',
-  //   modelJSON: model2Json,
-  // })
-  // live2DSprite.init({
-  //   modelSetting,
-  //   ticker: Ticker.shared,
-  // })
-  await app.init({
-    view: canvasRef.value,
-    backgroundAlpha: 0, // 如果需要透明，可以设置alpha为0
+  const live2DSprite2 = new Live2DSprite()
+  const model2Json = await (await fetch('/Resources/Hiyori/Hiyori.model3.json')).json()
+  const modelSetting = new CubismSetting({
+    prefixPath: '/Resources/Hiyori/',
+    modelJSON: model2Json,
   })
+  live2DSprite2.init({
+    modelSetting,
+    ticker: Ticker.shared,
+  })
+
+  await app.init({
+    canvas: canvasRef.value,
+    backgroundAlpha: 0,
+    autoDensity: true,
+    resizeTo: window, // 自动跟随窗口大小
+    resolution: Math.max(window.devicePixelRatio || 1, 1),
+  })
+
   if (canvasRef.value) {
-    // live2DSprite.x = -300
+    live2DSprite.x = -100
     // live2DSprite.y = -300
-    live2DSprite.width = canvasRef.value.clientWidth * window.devicePixelRatio
-    live2DSprite.height = canvasRef.value.clientHeight * window.devicePixelRatio
+    live2DSprite2.x = 100
+
+    live2DSprite.width = canvasRef.value.clientWidth
+    live2DSprite.height = canvasRef.value.clientHeight
+
+    live2DSprite2.width = canvasRef.value.clientWidth
+    live2DSprite2.height = canvasRef.value.clientHeight
+
     app.stage.addChild(live2DSprite)
+    app.stage.addChild(live2DSprite2)
 
     live2DSprite.setExpression({
       expressionId: 'normal',
+    })
+
+    // 模型加载完成后，打印原始尺寸信息
+    live2DSprite.onLive2D('ready', () => {
+      const size = live2DSprite.getModelCanvasSize()
+      if (size) {
+        console.log('模型原始尺寸:', size.width, 'x', size.height)
+      }
+    })
+
+    live2DSprite.onLive2D('hit', ({ hitAreaName, x, y }) => {
+      console.log('hit', hitAreaName, x, y)
+    })
+
+    live2DSprite.onLive2D('dragMove', ({ x, y }) => {
+      console.log('dragMove', x, y)
     })
 
     // 播放声音
@@ -60,6 +90,13 @@ onMounted(async () => {
       // 当前音嘴同步 仅支持wav格式
       voicePath: '/Resources/Hiyori/sounds/test3.wav',
     })
+
+    // 播放网络声音
+    // live2DSprite.playVoice({
+    //   // 当前音嘴同步 仅支持wav格式
+    //   voicePath: 'https://cdn.xxx/xx.mp3',
+    // })
+
 
     // 停止声音
     // live2DSprite.stopVoice()
