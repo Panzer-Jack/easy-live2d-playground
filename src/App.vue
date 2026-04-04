@@ -52,9 +52,9 @@ onMounted(async () => {
   })
 
   if (canvasRef.value) {
-    live2DSprite.x = -100
+    live2DSprite.x = -150
     // live2DSprite.y = -300
-    live2DSprite2.x = 100
+    live2DSprite2.x = 150
 
     live2DSprite.width = canvasRef.value.clientWidth
     live2DSprite.height = canvasRef.value.clientHeight
@@ -87,7 +87,6 @@ onMounted(async () => {
 
     // 播放声音
     live2DSprite.playVoice({
-      // 当前音嘴同步 仅支持wav格式
       voicePath: '/Resources/Hiyori/sounds/test3.wav',
     })
 
