@@ -1,149 +1,170 @@
 <script setup lang="ts">
-import { Config, CubismSetting, Live2DSprite, LogLevel } from 'easy-live2d'
-import { Application, Ticker } from 'pixi.js'
+import { Config, CubismSetting, Live2DSprite, LogLevel, Priority } from 'easy-live2d'
+import { Application } from 'pixi.js'
 import { onMounted, onUnmounted, ref } from 'vue'
 
 const canvasRef = ref<HTMLCanvasElement>()
+const ready = ref(false)
+const errorMessage = ref('')
 const app = new Application()
+const loading = new AbortController()
+let disposed = false
+let appInitialized = false
 
-// 设置 Config 默认配置
-Config.MotionGroupIdle = 'Idle' // 设置默认的空闲动作组
-// Config.MouseFollow = false // 禁用鼠标跟随
-Config.CubismLoggingLevel = LogLevel.LogLevel_Off // 设置日志级别
+Config.MotionGroupIdle = 'Idle'
+Config.CubismLoggingLevel = LogLevel.LogLevel_Warning
 
-// 创建Live2D精灵 并初始化
-const live2DSprite = new Live2DSprite()
-live2DSprite.init({
+// 示例一：直接使用模型路径。
+const live2DSprite = new Live2DSprite({
   modelPath: '/Resources/Hiyori/Hiyori.model3.json',
-  ticker: Ticker.shared,
   draggable: true,
 })
 
-// 监听点击事件
-live2DSprite.onLive2D('hit', ({ hitAreaName, x, y }) => {
-  console.log('hit', hitAreaName, x, y)
-})
+// 示例二：读取配置后使用 CubismSetting 初始化。
+const live2DSprite2 = new Live2DSprite()
+const sprites = [live2DSprite, live2DSprite2]
 
-// 你也可以直接这样初始化
-// const live2DSprite = new Live2DSprite({
-//   modelPath: '/Resources/Huusya/Huusya.model3.json',
-//   ticker: Ticker.shared
-// })
+function destroyResources() {
+  loading.abort()
+  for (const sprite of sprites)
+    sprite.destroy()
+  if (appInitialized) {
+    app.destroy()
+    appInitialized = false
+  }
+}
+
+for (const sprite of sprites) {
+  sprite.onLive2D('hit', ({ hitAreaName, x, y }) => {
+    console.log('hit', hitAreaName, x, y)
+    void sprite.startMotion({ group: 'TapBody', no: 0, priority: Priority.Normal })
+      .catch(error => console.error('动作播放失败', error))
+  })
+}
 
 onMounted(async () => {
-  // 你同时又可以直接这样初始化
-  const live2DSprite2 = new Live2DSprite()
-  const model2Json = await (await fetch('/Resources/Hiyori/Hiyori.model3.json')).json()
-  const modelSetting = new CubismSetting({
-    prefixPath: '/Resources/Hiyori/',
-    modelJSON: model2Json,
-  })
-  live2DSprite2.init({
-    modelSetting,
-    ticker: Ticker.shared,
-  })
+  try {
+    const response = await fetch('/Resources/Hiyori/Hiyori.model3.json', { signal: loading.signal })
+    if (!response.ok)
+      throw new Error(`模型配置加载失败：HTTP ${response.status}`)
+    const modelJSON = await response.json()
+    if (disposed)
+      return
 
-  await app.init({
-    canvas: canvasRef.value,
-    backgroundAlpha: 0,
-    autoDensity: true,
-    resizeTo: window, // 自动跟随窗口大小
-    resolution: Math.max(window.devicePixelRatio || 1, 1),
-  })
+    live2DSprite2.init({
+      modelSetting: new CubismSetting({ prefixPath: '/Resources/Hiyori/', modelJSON }),
+      draggable: true,
+    })
 
-  if (canvasRef.value) {
+    await app.init({
+      canvas: canvasRef.value,
+      backgroundAlpha: 0,
+      autoDensity: true,
+      resizeTo: window,
+      resolution: Math.max(window.devicePixelRatio || 1, 1),
+    })
+    appInitialized = true
+    if (disposed) {
+      destroyResources()
+      return
+    }
+
+    const canvas = canvasRef.value!
     live2DSprite.x = -150
-    // live2DSprite.y = -300
     live2DSprite2.x = 150
+    for (const sprite of sprites) {
+      sprite.width = canvas.clientWidth
+      sprite.height = canvas.clientHeight
+      app.stage.addChild(sprite)
+    }
 
-    live2DSprite.width = canvasRef.value.clientWidth
-    live2DSprite.height = canvasRef.value.clientHeight
-
-    live2DSprite2.width = canvasRef.value.clientWidth
-    live2DSprite2.height = canvasRef.value.clientHeight
-
-    app.stage.addChild(live2DSprite)
-    app.stage.addChild(live2DSprite2)
-
-    live2DSprite.setExpression({
-      expressionId: 'normal',
-    })
-
-    // 模型加载完成后，打印原始尺寸信息
-    live2DSprite.onLive2D('ready', () => {
-      const size = live2DSprite.getModelCanvasSize()
-      if (size) {
-        console.log('模型原始尺寸:', size.width, 'x', size.height)
-      }
-    })
-
-    live2DSprite.onLive2D('hit', ({ hitAreaName, x, y }) => {
-      console.log('hit', hitAreaName, x, y)
-    })
-
-    live2DSprite.onLive2D('dragMove', ({ x, y }) => {
-      console.log('dragMove', x, y)
-    })
-
-    // 播放声音
-    live2DSprite.playVoice({
-      voicePath: '/Resources/Hiyori/sounds/test3.wav',
-    })
-
-    // 播放网络声音
-    // live2DSprite.playVoice({
-    //   // 当前音嘴同步 仅支持wav格式
-    //   voicePath: 'https://cdn.xxx/xx.mp3',
-    // })
-
-
-    // 停止声音
-    // live2DSprite.stopVoice()
-
-    setTimeout(() => {
-      // 播放声音
-      live2DSprite.playVoice({
-        voicePath: '/Resources/Hiyori/sounds/test.wav',
-        immediate: true // 是否立即播放: 默认为true，会把当前正在播放的声音停止并立即播放新的声音
-      })
-    }, 10000)
-
-    // live2DSprite.startMotion({
-    //   group: 'test',
-    //   no: 0,
-    //   priority: 3,
-    // })
+    // 模型跟随 Pixi 渲染，无需传入 ticker 或额外 WebGL 配置。
+    await Promise.all(sprites.map(sprite => sprite.ready))
+    if (!disposed)
+      ready.value = true
+  } catch (error) {
+    if (!disposed) {
+      errorMessage.value = error instanceof Error ? error.message : String(error)
+      console.error('模型初始化失败', error)
+      destroyResources()
+    }
   }
 })
 
+async function playVoice(sprite: Live2DSprite) {
+  try {
+    await sprite.playVoice({
+      voicePath: '/Resources/Hiyori/sounds/test3.wav',
+      immediate: true,
+    })
+  } catch (error) {
+    console.error('语音播放失败', error)
+  }
+}
+
 onUnmounted(() => {
-  // 释放实例
-  live2DSprite.destroy()
+  disposed = true
+  destroyResources()
 })
 </script>
 
 <template>
-  <div class="test" />
-  <canvas
-    id="live2d"
-    ref="canvasRef"
-  />
+  <div class="backdrop" />
+  <canvas id="live2d" ref="canvasRef" />
+  <div class="controls">
+    <p v-if="errorMessage" role="alert">
+      加载失败：{{ errorMessage }}
+    </p>
+    <p v-else role="status">
+      {{ ready ? '模型已就绪，可点击或拖动' : '正在加载模型…' }}
+    </p>
+    <button :disabled="!ready" @click="playVoice(live2DSprite)">
+      左侧模型播放语音
+    </button>
+    <button :disabled="!ready" @click="playVoice(live2DSprite2)">
+      右侧模型播放语音
+    </button>
+    <button :disabled="!ready" @click="live2DSprite.stopVoice()">
+      停止左侧语音
+    </button>
+    <button :disabled="!ready" @click="live2DSprite2.stopVoice()">
+      停止右侧语音
+    </button>
+  </div>
 </template>
 
 <style>
 #live2d {
   position: absolute;
-  top: 0%;
-  right: 0%;
+  top: 0;
+  right: 0;
   width: 100%;
   height: 100%;
 }
 
-.test {
-  display: inline-block;
+.backdrop {
   position: absolute;
   width: 100%;
   height: 70%;
   background-color: pink;
+}
+
+.controls {
+  position: relative;
+  display: inline-block;
+  margin: 12px;
+  padding: 12px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.92);
+  font-family: sans-serif;
+}
+
+.controls p {
+  margin: 0 0 8px;
+}
+
+.controls button {
+  margin: 4px;
+  padding: 6px 10px;
 }
 </style>
