@@ -1,126 +1,101 @@
 # Easy Live2D Playground
 
-这是一个在线体验 easy-live2d 库的交互式演示平台。
-你能够直接用这个 云IDE [StackBlitz](https://stackblitz.com/~/github.com/Panzer-Jack/easy-live2d-playground) 在你的浏览器上直接体验。
+基于 Vue 3、TypeScript 和 Pixi.js 的 easy-live2d 双模型演示。
 
-## 项目介绍
+- [在 StackBlitz 中打开](https://stackblitz.com/~/github.com/Panzer-Jack/easy-live2d-playground)
+- [easy-live2d 源码](https://github.com/Panzer-Jack/easy-live2d)
+- [R5 迁移指南](https://panzer-jack.github.io/easy-live2d/guide/cubism-r5-migration)
 
-Easy Live2D Playground 是一个基于 Vue 3 和 TypeScript 构建的应用，用于展示和测试 easy-live2d 库的功能。通过该平台，用户可以直观地了解和体验 Live2D 模型在 Web 环境下的交互效果。
+## 版本要求
 
-easy-live2d：[仓库地址](https://github.com/Panzer-Jack/easy-live2d)
+本示例固定使用 `easy-live2d@1.0.0-uat.0`、`pixi.js@8.17.1`，并配套 **Cubism 5 SDK for Web R5** 的 Core（运行时版本 `06.00.0001`）。运行环境需要 WebGL 2，不支持 WebGL 1 或 SSR。
 
-## 特性
+`1.0.0-uat.0` 是已发布的预发布版本；npm 的 `latest` 标签仍可能指向旧版，因此不要把依赖改回 `latest`。Core 与库必须配套升级，旧的 `.moc3` 模型可以继续使用，但应验证实际表现。
 
-- 基于 Vue 3 + TypeScript + Vite 构建
-- 集成 easy-live2d 库，简化 Live2D 模型的加载和控制
-- 使用 PixiJS 作为渲染引擎
-- 提供模型表情、动作等交互演示
-- 支持鼠标跟踪等高级特性
+Pixi 默认选择 WebGL 2，无需额外填写渲染选项；Live2DSprite 也无需传入 `ticker`。
 
-## 技术栈
+## 本地运行
 
-- Vue 3
-- TypeScript
-- Vite
-- easy-live2d
-- PixiJS
-
-## 项目结构
-
-```
-public/
-  ├── Core/             # Live2D Cubism 核心库（必需）
-  │   └── live2dcubismcore.js  # Cubism SDK 核心文件
-  └── Resources/        # Live2D 模型资源
-      └── Hiyori/       # Hiyori 示例模型
-src/
-  ├── assets/           # 静态资源
-  ├── components/       # Vue 组件
-  ├── router/           # 路由配置
-  ├── stores/           # Pinia 状态管理
-  ├── views/            # 页面视图
-  ├── App.vue           # 主应用组件
-  └── main.ts           # 应用入口
-```
-
-## 开始使用
-
-### 安装依赖
+使用 Node.js 22 和项目指定的 pnpm 10.7.1：
 
 ```bash
-pnpm install
-```
-
-### 开发服务器
-
-```bash
+corepack enable
+pnpm install --frozen-lockfile
 pnpm dev
 ```
 
-### 构建项目
+构建和预览：
 
 ```bash
 pnpm build
+pnpm preview
 ```
 
-### 运行测试
+运行现有单元测试：
 
 ```bash
-pnpm test:unit
+pnpm test:unit --run
 ```
 
-## 重要提示
+## 演示内容
 
-### Cubism SDK 核心库引入
+`src/App.vue` 同时展示两种初始化方式：
 
-必须在 HTML 文件中引入 Live2D Cubism Core 库：
+1. 左侧模型通过 `modelPath` 初始化。
+2. 右侧模型通过 `CubismSetting` 传入已读取的模型配置和资源目录。
+
+两侧都使用仓库已有的 Hiyori 模型，支持拖动和点击身体播放动作。等待页面显示“模型已就绪”，再点击语音按钮播放音频和口型；两侧语音可独立播放、停止。音频由用户点击触发，避免浏览器阻止自动播放。模型没有配置表情，因此示例不调用不存在的表情。
+
+示例通过 `sprite.ready` 处理初始化失败，并在组件卸载时取消配置请求、销毁两个模型以及 Pixi Application。没有延迟播放定时器。
+
+## Core 文件
+
+入口 `index.html` 在应用代码之前加载：
 
 ```html
-<!-- 在 body 结束标签前引入 -->
-<script src="/Core/live2dcubismcore.js"></script>
+<script src="/Core/live2dcubismcore.min.js?v=5-r.5"></script>
 ```
 
-这一步是使用 Live2D 功能的必要条件，确保 easy-live2d 库能正常工作。
+Core 来自 [官方 R5 SDK](https://www.live2d.com/en/sdk/download/web/)，与 easy-live2d 使用的官方 Framework `5-r.5` 配套。R5 shader 已随 npm 包内置，无需在此仓库额外部署 Framework 或 Shaders。
 
-## 使用示例
+`public/Core/` 保留官方运行文件、类型声明、版本记录及许可文件。升级时同步替换 Core 并更新入口缓存版本；不分发官方可再分发清单之外的 source map。现有 `public/Resources/` 模型和音频保持原样。
 
-以下是初始化 Live2D 模型的基本示例：
+## 最小用法
 
-```typescript
-  import { Application, Ticker } from 'pixi.js';
-  import { Live2DSprite, Config, Priority } from 'easy-live2d';
+以下代码需要 Vite 等打包环境，以及已引入 Core 的 HTML 页面：
 
-  // Configure basic settings
-  Config.MotionGroupIdle = 'Idle'; // Set default idle motion group
-  Config.MouseFollow = false; // Disable mouse following
-  // Create Live2D sprite
-  const live2dSprite = new Live2DSprite();
-  live2dSprite.init({
-    modelPath: '/Resources/Hiyori/Hiyori.model3.json',
-    ticker: Ticker.shared
-  });
+```ts
+import { Live2DSprite } from 'easy-live2d'
+import { Application } from 'pixi.js'
 
-  const init = async () => {
-    // Create application
-    const app = new Application();
-    await app.init({
-      view: document.getElementById('live2d'),
-      backgroundAlpha: 0, // Set alpha to 0 for transparency if needed
-    });
-    // Live2D sprite size
-    live2DSprite.width = canvasRef.value.clientWidth * window.devicePixelRatio
-    live2DSprite.height = canvasRef.value.clientHeight * window.devicePixelRatio
-    // Add to stage
-    app.stage.addChild(live2dSprite);
-    console.log('easy-live2d initialized successfully!');
-  }
-  init()
+const canvas = document.querySelector<HTMLCanvasElement>('#live2d')!
+const app = new Application()
+await app.init({ canvas, backgroundAlpha: 0, resizeTo: window })
+
+const sprite = new Live2DSprite({
+  modelPath: '/Resources/Hiyori/Hiyori.model3.json',
+  draggable: true,
+})
+sprite.width = canvas.clientWidth
+sprite.height = canvas.clientHeight
+app.stage.addChild(sprite)
+
+try {
+  await sprite.ready
+  console.log('模型已就绪', sprite.getModelCanvasSize())
+} catch (error) {
+  console.error('模型初始化失败', error)
+  sprite.destroy()
+  app.destroy()
+}
+
+// 页面或组件卸载时释放 sprite 和 app。
 ```
+
+## 验证
+
+构建、类型检查、现有单元测试以及 7 个浏览器冒烟场景已通过。环境、覆盖范围及旧版开发工具的已知限制见 [R5 验证记录](docs/r5-validation.md)。
 
 ## 许可证
 
-MPL-2.0
-
-## 作者
-
-Panzer_Jack - [个人网站](https://www.panzer-jack.cn)
+本 playground 自身代码沿用 `MPL-2.0`；easy-live2d 库的许可证以其发布包为准（当前为 MIT）。Live2D Core 与模型、音频资源遵循各自许可，详见 `public/Core/LICENSE.md` 及资源中的许可说明。
