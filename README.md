@@ -8,9 +8,9 @@
 
 ## 版本要求
 
-本示例固定使用 `easy-live2d@1.0.0-uat.0`、`pixi.js@8.17.1`，并配套 **Cubism 5 SDK for Web R5** 的 Core（运行时版本 `06.00.0001`）。运行环境需要 WebGL 2，不支持 WebGL 1 或 SSR。
+本示例固定使用 `easy-live2d@1.2.0`、`pixi.js@8.17.1`，并配套 **Cubism 5 SDK for Web R5** 的 Core（运行时版本 `06.00.0001`）。运行环境需要 WebGL 2，不支持 WebGL 1 或 SSR。
 
-`1.0.0-uat.0` 是已发布的预发布版本；npm 的 `latest` 标签仍可能指向旧版，因此不要把依赖改回 `latest`。Core 与库必须配套升级，旧的 `.moc3` 模型可以继续使用，但应验证实际表现。
+升级时请核对 Core 与库的兼容性，并验证现有 `.moc3` 模型的渲染效果。
 
 Pixi 默认选择 WebGL 2，无需额外填写渲染选项；Live2DSprite 也无需传入 `ticker`。
 
@@ -94,7 +94,7 @@ try {
 
 ## 验证
 
-构建、类型检查、现有单元测试以及 7 个浏览器冒烟场景已通过。环境、覆盖范围及旧版开发工具的已知限制见 [R5 验证记录](docs/r5-validation.md)。
+R5 迁移时的构建、类型检查、单元测试和 7 个浏览器冒烟场景见 [R5 验证记录](docs/r5-validation.md)。
 
 ## 许可证
 
