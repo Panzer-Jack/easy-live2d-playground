@@ -37,6 +37,8 @@ pnpm preview
 pnpm test:unit --run
 ```
 
+如果本机提示 `ENOTFOUND localhost`，给开发或预览命令加上 `--host 127.0.0.1`，给单测命令加上 `--api.host 127.0.0.1`。
+
 ## 演示内容
 
 `src/App.vue` 同时展示两种初始化方式：
